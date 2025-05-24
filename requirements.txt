@@ -32,7 +32,7 @@ boto3==1.26.131
 redis==4.5.5
 
 # Processamento
-pydantic-settings==2.0.2
+python-decouple==3.8
 pyjwt==2.7.0
 orjson==3.8.12
 ujson==5.7.0
