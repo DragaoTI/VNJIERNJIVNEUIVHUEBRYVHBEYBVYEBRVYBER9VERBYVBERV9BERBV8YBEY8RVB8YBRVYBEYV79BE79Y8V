@@ -22,8 +22,7 @@ class RecoveryCodeResponse(BaseModel):
 
 router = APIRouter(
     prefix="/2fa",
-    tags=["Two Factor Authentication"],
-    dependencies=[Depends(limiter.check_rate_limit_dependency("2fa"))]
+    tags=["Two Factor Authentication"]
 )
 
 @router.post("/setup", response_model=TwoFactorSetupResponse, summary="Iniciar configuração de 2FA")
@@ -265,4 +264,4 @@ async def get_2fa_status(
         "valid": True,
         "message": "2FA está habilitado" if is_enabled else "2FA não está habilitado",
         "enabled": is_enabled
-    } 
+    }
