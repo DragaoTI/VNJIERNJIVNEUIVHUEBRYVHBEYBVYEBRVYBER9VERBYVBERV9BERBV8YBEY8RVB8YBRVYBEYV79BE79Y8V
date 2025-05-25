@@ -26,8 +26,7 @@ ADMIN_PANEL_SECRET = secrets.token_urlsafe(16)
 
 admin_panel_router = APIRouter(
     prefix=ADMIN_PANEL_PATH,
-    tags=["Admin Panel"],
-    dependencies=[Depends(limiter.check_rate_limit_dependency("admin_panel"))]
+    tags=["Admin Panel"]
 )
 
 # Lista de IPs permitidos para acessar o painel admin (configurável)
