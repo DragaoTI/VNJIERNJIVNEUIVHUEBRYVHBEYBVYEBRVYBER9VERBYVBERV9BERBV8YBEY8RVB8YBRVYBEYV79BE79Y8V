@@ -12,8 +12,6 @@ import uuid
 from app.core.config import settings
 from app.routers import (
     auth_router, 
-    user_router, 
-    store_router, 
     admin_router, 
     admin_panel_router,
     two_factor_router,
@@ -142,8 +140,6 @@ else:
     print(f"          Caminho base do projeto detectado: {BASE_DIR}")
 
 app.include_router(auth_router.router, prefix=settings.API_V1_STR)
-app.include_router(user_router.router, prefix=settings.API_V1_STR)
-app.include_router(store_router.router, prefix=settings.API_V1_STR)
 app.include_router(admin_router.router, prefix=settings.API_V1_STR)
 app.include_router(admin_panel_router, prefix=settings.API_V1_STR)
 app.include_router(two_factor_router.router, prefix=settings.API_V1_STR)
