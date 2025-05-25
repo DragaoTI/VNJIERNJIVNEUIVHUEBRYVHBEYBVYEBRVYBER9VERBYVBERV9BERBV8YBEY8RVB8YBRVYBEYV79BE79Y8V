@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Configurações de segurança
     SECRET_KEY: str = os.environ.get("SECRET_KEY", secrets.token_urlsafe(32))
     JWT_ALGORITHM: str = "RS256"  # Algoritmo mais seguro que HS256
+    JWT_TOKEN_PREFIX: str = "Bearer"  # Prefixo para tokens JWT
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # 1 hora
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 dias
     ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 horas
@@ -49,6 +50,7 @@ class Settings(BaseSettings):
     # Configuração de CORS
     CORS_ORIGINS: str = "*"
     CORS_MAX_AGE: int = 3600  # 1 hora
+    ALLOWED_ORIGINS: str = "*"  # Para configuração CSP
     
     # Rate Limiting
     RATE_LIMIT_DEFAULT: str = "60/minute"
@@ -60,6 +62,7 @@ class Settings(BaseSettings):
     
     # Configuração de IPs e redes
     ALLOWED_ADMIN_IP_RANGES: Optional[str] = None  # Lista de IPs/redes separados por vírgula
+    ALLOWED_IPS: Optional[str] = None  # IPs permitidos separados por vírgula
     TRUSTED_IPS: Optional[str] = None  # IPs confiáveis separados por vírgula
     TRUSTED_NETWORKS: Optional[str] = None  # Redes confiáveis (CIDR) separadas por vírgula
     
@@ -75,6 +78,7 @@ class Settings(BaseSettings):
     LOG_MAX_SIZE: int = 10 * 1024 * 1024  # 10 MB
     LOG_BACKUP_COUNT: int = 5
     LOG_FORMAT: str = "text"  # "text" ou "json"
+    LOG_TO_FILE: bool = False  # Define se deve tentar escrever logs em arquivo
     ENABLE_PERFORMANCE_MONITORING: bool = True
     
     # Configurações de segurança para respostas e requisições
