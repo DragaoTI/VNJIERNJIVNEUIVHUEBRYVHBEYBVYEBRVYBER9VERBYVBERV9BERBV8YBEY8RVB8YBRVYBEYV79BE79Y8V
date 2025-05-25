@@ -21,4 +21,4 @@ class ApiLogResponseSchema(BaseModel):
     tags: Optional[List[str]] = None
 
     class Config:
-        from_attributes = True # Para Pydantic v2 (era orm_mode)
+        orm_mode = True # Para Pydantic v1 (from_attributes no v2)
