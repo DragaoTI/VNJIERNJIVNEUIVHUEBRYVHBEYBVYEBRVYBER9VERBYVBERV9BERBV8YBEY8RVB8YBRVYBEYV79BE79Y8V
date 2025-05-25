@@ -139,11 +139,11 @@ else:
     print(f"AVISO:    Diretório UI do Admin NÃO ENCONTRADO em '{FRONTEND_ADMIN_DIR}'. UI não será servida.")
     print(f"          Caminho base do projeto detectado: {BASE_DIR}")
 
-app.include_router(auth_router.router, prefix=settings.API_V1_STR)
-app.include_router(admin_router.router, prefix=settings.API_V1_STR)
+app.include_router(auth_router, prefix=settings.API_V1_STR)
+app.include_router(admin_router, prefix=settings.API_V1_STR)
 app.include_router(admin_panel_router, prefix=settings.API_V1_STR)
-app.include_router(two_factor_router.router, prefix=settings.API_V1_STR)
-app.include_router(security_router.router, prefix=settings.API_V1_STR)
+app.include_router(two_factor_router, prefix=settings.API_V1_STR)
+app.include_router(security_router, prefix=settings.API_V1_STR)
 
 @app.get("/", tags=["Root"])
 async def read_root_main(): # Nome único
