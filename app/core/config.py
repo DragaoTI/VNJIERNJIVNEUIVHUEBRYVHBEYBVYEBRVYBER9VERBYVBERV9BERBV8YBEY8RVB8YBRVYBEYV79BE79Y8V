@@ -43,8 +43,8 @@ class Settings(BaseSettings):
     JWT_PUBLIC_KEY_CONTENT: Optional[str] = None
     
     # URLs e rotas especiais
-    ADMIN_PANEL_URL: str = "/admin-panel"
-    FRONTEND_URL: str = "https://crosshairlab.com"
+    ADMIN_PANEL_URL: str = "/_Y3Jvc3NoYWlybGFiX2FkbWlu-admin_"
+    FRONTEND_URL: str = "https://crosshairlab.netlify.app"
     
     # Configuração de CORS
     CORS_ORIGINS: str = "*"
