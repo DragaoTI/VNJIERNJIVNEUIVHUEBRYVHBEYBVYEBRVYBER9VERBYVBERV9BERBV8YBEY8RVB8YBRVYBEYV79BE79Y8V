@@ -233,7 +233,7 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
                     "user_id": str(user_id) if user_id else None,
                     "admin_id": str(admin_id) if admin_id else None,
                     "headers": headers,
-                    "body": body,
+                    "request_body": request_body_log,
                     "response_size": int(response.headers.get("content-length", 0)),
                     "referer": request.headers.get("referer"),
                     "error": None
@@ -257,7 +257,20 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
                         current_admin_id = log_data.get("admin_id")
                         if current_admin_id and not isinstance(current_admin_id, str): log_data["admin_id"] = str(current_admin_id)
                         elif current_admin_id is None: log_data["admin_id"] = None
-                        if log_data.get("body") is None: log_data["body"] = None 
+                        
+                        # Remover o campo 'body' que está causando o erro
+                        # ou converter para JSON string se a coluna existir com outro tipo
+                        if "body" in log_data:
+                            if log_data["body"] is not None:
+                                try:
+                                    # Converter para string JSON se não for None
+                                    log_data["request_body"] = json.dumps(log_data["body"], default=str)
+                                except:
+                                    log_data["request_body"] = str(log_data["body"])
+                            else:
+                                log_data["request_body"] = None
+                            # Remover o campo 'body' original
+                            del log_data["body"]
                         
                         print(f"DEBUG LOGGING - Payload para Inserção em api_logs: {json.dumps(log_data, default=str)}")
                         
