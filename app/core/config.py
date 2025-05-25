@@ -1,6 +1,6 @@
 import os
 import secrets
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 from typing import Optional, List, Dict, Any, Union
 from datetime import timedelta
 import json
