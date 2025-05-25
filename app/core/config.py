@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     API_LOGGING_ENABLED: bool = True
     SENTRY_DSN: Optional[str] = None
     LOG_LEVEL: str = "INFO"
+    LOG_FILE: str = "api.log"
+    LOG_MAX_SIZE: int = 10 * 1024 * 1024  # 10 MB
+    LOG_BACKUP_COUNT: int = 5
+    LOG_FORMAT: str = "text"  # "text" ou "json"
     ENABLE_PERFORMANCE_MONITORING: bool = True
     
     # Configurações de segurança para respostas e requisições
