@@ -2,26 +2,28 @@
 import time
 import json
 import re
-from typing import Optional, Any, Dict, Callable, Awaitable
+from typing import Optional, Any, Dict, Callable, Awaitable, TypeVar, Union
 import logging
 from logging.handlers import RotatingFileHandler
 import os
 import uuid
 from datetime import datetime
 
-try:
-    from starlette.middleware.base import BaseHTTPMiddleware, DispatchFunction
-    CALL_NEXT_TYPE = DispatchFunction
-except ImportError:
-    CALL_NEXT_TYPE = Callable[[Request], Awaitable[Response]]
-    from starlette.middleware.base import BaseHTTPMiddleware
-
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.requests import Request
 from starlette.responses import Response
+from starlette.middleware.base import BaseHTTPMiddleware
 from jose import jwt, JWTError
 
+# Definição de tipo adequada para o callback do middleware
+CALL_NEXT_TYPE = Callable[[Request], Awaitable[Response]]
+
 from app.core.config import settings
+
+# Define variável global para o serviço Supabase
+# Será preenchida quando necessário para evitar importação circular
+supabase_service = None
+
 ADMIN_JWT_ALGORITHM = getattr(settings, 'ADMIN_JWT_ALGORITHM', settings.JWT_ALGORITHM)
 USER_JWT_ALGORITHM = settings.JWT_ALGORITHM
 
@@ -141,6 +143,7 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
         
         # Tenta extrair o corpo da requisição (para métodos POST, PUT, PATCH)
         body = None
+        request_body_log = None  # Inicializa a variável para uso posterior
         if method in ["POST", "PUT", "PATCH"]:
             try:
                 # Salva a posição atual do corpo
@@ -153,9 +156,11 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
                 try:
                     json_body = json.loads(body_position.decode())
                     body = self._sanitize_data(json_body)
+                    request_body_log = self._sanitize_body(body_position.decode())
                 except:
                     # Se não for JSON, apenas registra o tamanho
                     body = {"size_bytes": len(body_position)}
+                    request_body_log = f"{{\"size_bytes\": {len(body_position)}}}"
             except:
                 # Ignora erros na leitura do corpo
                 pass
@@ -242,7 +247,23 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
                 
                 # Enviado ao serviço de logging
                 try:
-                    await supabase_service.log_api_request(**log_data)
+                    # Importação local para evitar circular imports durante o startup
+                    from app.services.supabase_service import supabase_service as supabase_service_local
+                    
+                    if supabase_service_local and supabase_service_local.client:
+                        current_user_id = log_data.get("user_id")
+                        if current_user_id and not isinstance(current_user_id, str): log_data["user_id"] = str(current_user_id)
+                        elif current_user_id is None: log_data["user_id"] = None
+                        current_admin_id = log_data.get("admin_id")
+                        if current_admin_id and not isinstance(current_admin_id, str): log_data["admin_id"] = str(current_admin_id)
+                        elif current_admin_id is None: log_data["admin_id"] = None
+                        if log_data.get("body") is None: log_data["body"] = None 
+                        
+                        print(f"DEBUG LOGGING - Payload para Inserção em api_logs: {json.dumps(log_data, default=str)}")
+                        
+                        supabase_service_local.client.table("api_logs").insert(log_data).execute()
+                    else:
+                        print("AVISO DE LOGGING: Cliente Supabase não disponível, log da API não será salvo.")
                 except Exception as e:
                     # Falha silenciosa se o logging falhar
                     print(f"Erro ao registrar log de API: {str(e)}")
@@ -297,7 +318,28 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
                         "error_type": type(e).__name__
                     }
                     
-                    await supabase_service.log_api_error(**error_data)
+                    # Enviado ao serviço de logging
+                    try:
+                        # Importação local para evitar circular imports durante o startup
+                        from app.services.supabase_service import supabase_service as supabase_service_local
+                        
+                        if supabase_service_local and supabase_service_local.client:
+                            current_user_id = error_data.get("user_id")
+                            if current_user_id and not isinstance(current_user_id, str): error_data["user_id"] = str(current_user_id)
+                            elif current_user_id is None: error_data["user_id"] = None
+                            current_admin_id = error_data.get("admin_id")
+                            if current_admin_id and not isinstance(current_admin_id, str): error_data["admin_id"] = str(current_admin_id)
+                            elif current_admin_id is None: error_data["admin_id"] = None
+                            if error_data.get("error") is None: error_data["error"] = None 
+                            
+                            print(f"DEBUG LOGGING - Payload para Inserção em api_logs: {json.dumps(error_data, default=str)}")
+                            
+                            supabase_service_local.client.table("api_logs").insert(error_data).execute()
+                        else:
+                            print("AVISO DE LOGGING: Cliente Supabase não disponível, log da API não será salvo.")
+                    except Exception as e:
+                        # Falha silenciosa se o logging falhar
+                        print(f"Erro ao registrar log de erro: {str(e)}")
                 except:
                     # Falha silenciosa se o logging falhar
                     pass
@@ -338,9 +380,10 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
         elif status_code_for_log >= 400: log_entry["tags"].append("error_client")
         
         try:
-            from app.services.supabase_service import supabase_service # Importar aqui para tentar mitigar startup issues
+            # Importação local para evitar circular imports durante o startup
+            from app.services.supabase_service import supabase_service as supabase_service_local
             
-            if supabase_service and supabase_service.client:
+            if supabase_service_local and supabase_service_local.client:
                 current_user_id = log_entry.get("user_id")
                 if current_user_id and not isinstance(current_user_id, str): log_entry["user_id"] = str(current_user_id)
                 elif current_user_id is None: log_entry["user_id"] = None
@@ -352,7 +395,7 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
                 print(f"DEBUG LOGGING - Payload para Inserção em api_logs: {json.dumps(log_entry, default=str)}")
                 
                 # REMOVIDO 'await' DA LINHA ABAIXO
-                supabase_service.client.table("api_logs").insert(log_entry).execute()
+                supabase_service_local.client.table("api_logs").insert(log_entry).execute()
             else:
                 print("AVISO DE LOGGING: Cliente Supabase não disponível, log da API não será salvo.")
         except Exception as log_e:
@@ -406,3 +449,70 @@ class ApiLoggingMiddleware(BaseHTTPMiddleware):
             return json.dumps(data)
         except:
             return "***BINARY DATA***"
+
+    def _sanitize_data(self, data: dict) -> dict:
+        """Sanitiza dados removendo campos sensíveis"""
+        if not isinstance(data, dict):
+            return data
+        
+        sanitized = {}
+        for key, value in data.items():
+            if key.lower() in self.sensitive_fields:
+                sanitized[key] = "***REDACTED***"
+            elif isinstance(value, dict):
+                sanitized[key] = self._sanitize_data(value)
+            elif isinstance(value, list):
+                sanitized[key] = [
+                    self._sanitize_data(item) if isinstance(item, dict) else item
+                    for item in value
+                ]
+            else:
+                sanitized[key] = value
+            
+        return sanitized
+
+    def _extract_device_info(self, user_agent: str) -> Optional[Dict[str, str]]:
+        """Extrai informações básicas de dispositivo e SO do User-Agent"""
+        if not user_agent:
+            return None
+        
+        device_info = {}
+        
+        # Detecção de dispositivo móvel
+        mobile_patterns = ["Android", "iPhone", "iPad", "Mobile", "Windows Phone"]
+        if any(pattern in user_agent for pattern in mobile_patterns):
+            device_info["device_type"] = "mobile"
+        else:
+            device_info["device_type"] = "desktop"
+        
+        # Detecção de sistema operacional
+        if "Windows" in user_agent:
+            device_info["os"] = "Windows"
+        elif "Mac OS" in user_agent:
+            device_info["os"] = "MacOS"
+        elif "Linux" in user_agent:
+            device_info["os"] = "Linux"
+        elif "Android" in user_agent:
+            device_info["os"] = "Android"
+        elif "iOS" in user_agent or "iPhone" in user_agent or "iPad" in user_agent:
+            device_info["os"] = "iOS"
+        else:
+            device_info["os"] = "Unknown"
+        
+        # Detecção de navegador
+        if "Chrome" in user_agent and "Chromium" not in user_agent:
+            device_info["browser"] = "Chrome"
+        elif "Firefox" in user_agent:
+            device_info["browser"] = "Firefox"
+        elif "Safari" in user_agent and "Chrome" not in user_agent:
+            device_info["browser"] = "Safari"
+        elif "MSIE" in user_agent or "Trident" in user_agent:
+            device_info["browser"] = "Internet Explorer"
+        elif "Edge" in user_agent:
+            device_info["browser"] = "Edge"
+        elif "Opera" in user_agent or "OPR" in user_agent:
+            device_info["browser"] = "Opera"
+        else:
+            device_info["browser"] = "Unknown"
+        
+        return device_info
