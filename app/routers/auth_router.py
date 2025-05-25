@@ -24,8 +24,7 @@ from app.services.two_factor_service import two_factor_service
 
 router = APIRouter(
     prefix="/auth",
-    tags=["Authentication"],
-    dependencies=[Depends(limiter.check_rate_limit_dependency("auth"))]
+    tags=["Authentication"]
 )
 
 # Cache de desafios 2FA pendentes
