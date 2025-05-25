@@ -18,4 +18,4 @@ class UserResponse(UserBase):
     role: Optional[str] = None # Para mostrar a role do usuário
 
     class Config:
-        from_attributes = True # Necessário para Pydantic V2 (orm_mode no V1)
+        orm_mode = True # Necessário para Pydantic V1 (from_attributes no V2)
