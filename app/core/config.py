@@ -1,6 +1,6 @@
 import os
 import secrets
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseSettings
 from typing import Optional, List, Dict, Any, Union
 from datetime import timedelta
 import json
@@ -109,7 +109,10 @@ class Settings(BaseSettings):
     CACHE_TTL: int = 3600  # 1 hora
     
     # Configuração para carregar variáveis de ambiente de arquivo .env
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        extra = "ignore"
     
     def __init__(self, **data: Any):
         super().__init__(**data)
