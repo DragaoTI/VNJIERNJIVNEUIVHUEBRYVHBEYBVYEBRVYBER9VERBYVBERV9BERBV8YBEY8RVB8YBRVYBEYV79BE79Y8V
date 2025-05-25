@@ -15,7 +15,8 @@ from app.routers import (
     admin_router, 
     admin_panel_router,
     two_factor_router,
-    security_router
+    security_router,
+    stats_router
 )
 from app.utils.rate_limiter import limiter
 from slowapi.errors import RateLimitExceeded
@@ -144,6 +145,7 @@ app.include_router(admin_router, prefix=settings.API_V1_STR)
 app.include_router(admin_panel_router, prefix=settings.API_V1_STR)
 app.include_router(two_factor_router, prefix=settings.API_V1_STR)
 app.include_router(security_router, prefix=settings.API_V1_STR)
+app.include_router(stats_router, prefix=settings.API_V1_STR)
 
 @app.get("/", tags=["Root"])
 async def read_root_main(): # Nome único
