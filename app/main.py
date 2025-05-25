@@ -106,7 +106,7 @@ async def add_security_headers(request: Request, call_next):
     # CSP com nonce dinâmico
     csp = (
         f"default-src 'self'; "
-        f"script-src 'self' 'nonce-{CSP_NONCE}' 'strict-dynamic'; "
+        f"script-src 'self' 'nonce-{CSP_NONCE}' 'strict-dynamic' https://*.supabase.co https://cdn.jsdelivr.net; "
         f"style-src 'self' 'unsafe-inline'; "
         f"img-src 'self' data: https:; "
         f"font-src 'self'; "
