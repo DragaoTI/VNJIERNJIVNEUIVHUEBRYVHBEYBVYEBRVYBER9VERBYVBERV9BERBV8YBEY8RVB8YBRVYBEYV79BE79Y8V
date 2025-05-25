@@ -7,7 +7,7 @@ from app.schemas.geo_log_schemas import GeoLogCreate
 from app.utils.security import hash_token
 from typing import Optional, Dict, Any, List
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import traceback # Para logs de exceção
 
 class SupabaseService:
@@ -144,5 +144,300 @@ class SupabaseService:
             response = self.client.table("refresh_tokens").update({"revoked": True}).eq("user_id", str(user_id)).eq("revoked", False).execute() # SÍNCRONO
             return True 
         except Exception as e: print(f"Erro ao revogar todos os refresh tokens para user {user_id}: {e}"); return False
+
+    # Implementando método de log de segurança
+    def log_security_event(self, event_type: str, user_id: Optional[str] = None, 
+                         details: Optional[str] = None, severity: str = "info", 
+                         ip: Optional[str] = None) -> bool:
+        """
+        Registra um evento de segurança na tabela security_events
+        """
+        if not self.client: 
+            print("ERRO: log_security_event, self.client é None."); 
+            return False
+        
+        try:
+            event_data = {
+                "event_type": event_type,
+                "user_id": user_id,
+                "timestamp": datetime.now().isoformat(),
+                "details": details,
+                "severity": severity,
+                "ip_address": ip
+            }
+            
+            response = self.client.table("security_events").insert(event_data).execute()
+            return bool(response.data and len(response.data) > 0)
+        except Exception as e:
+            print(f"Erro ao registrar evento de segurança: {e}")
+            return False
+    
+    # Métodos para o painel de segurança
+    def get_security_events(self, limit: int = 100, offset: int = 0, 
+                          start_date: Optional[datetime] = None,
+                          filters: Optional[Dict[str, Any]] = None) -> list:
+        """
+        Busca eventos de segurança com filtros opcionais
+        """
+        if not self.client: 
+            print("ERRO: get_security_events, self.client é None."); 
+            return []
+        
+        try:
+            query = self.client.table("security_events").select("*").order("timestamp", desc=True)
+            
+            # Aplica filtros se fornecidos
+            if filters:
+                for key, value in filters.items():
+                    if value is not None:
+                        query = query.eq(key, value)
+            
+            # Filtra por data se fornecida
+            if start_date:
+                query = query.gte("timestamp", start_date.isoformat())
+            
+            # Aplica paginação
+            query = query.limit(limit).offset(offset)
+            
+            # Executa a consulta
+            response = query.execute()
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Erro ao buscar eventos de segurança: {e}")
+            return []
+    
+    async def get_security_stats(self, start_date: datetime) -> Optional[Dict[str, Any]]:
+        """Obtém estatísticas de segurança"""
+        if not self.client:
+            print("ERRO: get_security_stats, self.client é None.");
+            return None
+            
+        # Implementação atual retorna None, será expandida posteriormente
+        return None
+        
+    async def get_global_stats(self) -> Optional[Dict[str, Any]]:
+        """
+        Obtém estatísticas globais da plataforma.
+        Retorna None se não for possível obter os dados.
+        """
+        if not self.client:
+            print("ERRO: get_global_stats, self.client é None.")
+            return None
+            
+        try:
+            # Busca total de usuários
+            users_response = await self.client.table('profiles').select('count', count='exact').execute()
+            total_users = users_response.count if hasattr(users_response, 'count') else 0
+            
+            # Busca total de miras
+            crosshairs_response = await self.client.table('crosshairs').select('count', count='exact').execute()
+            total_crosshairs = crosshairs_response.count if hasattr(crosshairs_response, 'count') else 0
+            
+            # Busca usuários ativos hoje
+            today = datetime.now().date()
+            today_str = today.isoformat()
+            active_users_today_response = await self.client.table('user_activity').select('count', count='exact').gte('last_active_at', today_str).execute()
+            active_users_today = active_users_today_response.count if hasattr(active_users_today_response, 'count') else 0
+            
+            # Busca usuários ativos na última semana
+            week_ago = (today - timedelta(days=7)).isoformat()
+            active_users_week_response = await self.client.table('user_activity').select('count', count='exact').gte('last_active_at', week_ago).execute()
+            active_users_week = active_users_week_response.count if hasattr(active_users_week_response, 'count') else 0
+            
+            # Busca jogos populares
+            # Esta consulta seria mais complexa no Supabase real, simplificada aqui
+            popular_games_response = await self.client.rpc('get_popular_games').execute()
+            popular_games = popular_games_response.data if hasattr(popular_games_response, 'data') else []
+            
+            # Distribuição de miras por jogo
+            crosshairs_per_game_response = await self.client.rpc('get_crosshairs_per_game').execute()
+            crosshairs_per_game = crosshairs_per_game_response.data if hasattr(crosshairs_per_game_response, 'data') else {}
+            
+            # Jogos recentemente adicionados
+            newest_games_response = await self.client.table('games').select('name').order('created_at', desc=True).limit(5).execute()
+            newest_games = [game.get('name') for game in newest_games_response.data] if hasattr(newest_games_response, 'data') else []
+            
+            return {
+                "total_users": total_users,
+                "total_crosshairs": total_crosshairs,
+                "active_users_today": active_users_today,
+                "active_users_week": active_users_week,
+                "popular_games": popular_games,
+                "crosshairs_per_game": crosshairs_per_game,
+                "newest_games": newest_games,
+                "last_updated": datetime.now().isoformat()
+            }
+        except Exception as e:
+            print(f"ERRO ao obter estatísticas globais: {str(e)}")
+            return None
+            
+    async def get_user_stats(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Obtém estatísticas de um usuário específico.
+        Retorna None se não for possível obter os dados.
+        """
+        if not self.client:
+            print(f"ERRO: get_user_stats para usuário {user_id}, self.client é None.")
+            return None
+            
+        try:
+            # Busca total de miras do usuário
+            crosshairs_response = await self.client.table('crosshairs').select('count', count='exact').eq('user_id', user_id).execute()
+            total_crosshairs = crosshairs_response.count if hasattr(crosshairs_response, 'count') else 0
+            
+            # Busca jogos favoritos do usuário
+            favorite_games_response = await self.client.rpc('get_user_favorite_games', {"user_id_param": user_id}).execute()
+            favorite_games = favorite_games_response.data if hasattr(favorite_games_response, 'data') else []
+            
+            # Busca atividade recente
+            recent_activity_response = await self.client.table('user_activity_log').select('*').eq('user_id', user_id).order('created_at', desc=True).limit(10).execute()
+            recent_activity = recent_activity_response.data if hasattr(recent_activity_response, 'data') else []
+            
+            # Busca conquistas
+            achievements_response = await self.client.table('user_achievements').select('*').eq('user_id', user_id).execute()
+            achievements = achievements_response.data if hasattr(achievements_response, 'data') else []
+            
+            return {
+                "total_crosshairs": total_crosshairs,
+                "favorite_games": favorite_games,
+                "recent_activity": recent_activity,
+                "achievements": achievements
+            }
+        except Exception as e:
+            print(f"ERRO ao obter estatísticas do usuário {user_id}: {str(e)}")
+            return None
+
+    def get_blocked_ips(self) -> list:
+        """
+        Retorna a lista de IPs bloqueados
+        """
+        if not self.client: 
+            print("ERRO: get_blocked_ips, self.client é None."); 
+            return []
+        
+        try:
+            response = self.client.table("blocked_ips").select("*").execute()
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Erro ao buscar IPs bloqueados: {e}")
+            return []
+    
+    # Métodos para logging de atividade administrativa
+    def log_admin_activity(self, admin_id: str, action: str, details: Optional[str] = None) -> bool:
+        """
+        Registra atividade de administrador
+        """
+        if not self.client: 
+            print("ERRO: log_admin_activity, self.client é None."); 
+            return False
+        
+        try:
+            activity_data = {
+                "admin_id": admin_id,
+                "action": action,
+                "details": details,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            response = self.client.table("admin_activity_logs").insert(activity_data).execute()
+            return bool(response.data and len(response.data) > 0)
+        except Exception as e:
+            print(f"Erro ao registrar atividade de admin: {e}")
+            return False
+    
+    def log_admin_login_success(self, ip: str, admin_id: str, username: str) -> bool:
+        """
+        Registra login bem-sucedido de administrador
+        """
+        if not self.client: 
+            print("ERRO: log_admin_login_success, self.client é None."); 
+            return False
+        
+        try:
+            log_data = {
+                "admin_id": admin_id,
+                "ip_address": ip,
+                "username": username,
+                "timestamp": datetime.now().isoformat(),
+                "successful": True
+            }
+            
+            response = self.client.table("admin_login_logs").insert(log_data).execute()
+            return bool(response.data and len(response.data) > 0)
+        except Exception as e:
+            print(f"Erro ao registrar login de admin: {e}")
+            return False
+    
+    def log_admin_login_failure(self, ip: str, username: str, reason: str) -> bool:
+        """
+        Registra falha de login de administrador
+        """
+        if not self.client: 
+            print("ERRO: log_admin_login_failure, self.client é None."); 
+            return False
+        
+        try:
+            log_data = {
+                "ip_address": ip,
+                "username": username,
+                "reason": reason,
+                "timestamp": datetime.now().isoformat(),
+                "successful": False
+            }
+            
+            response = self.client.table("admin_login_logs").insert(log_data).execute()
+            return bool(response.data and len(response.data) > 0)
+        except Exception as e:
+            print(f"Erro ao registrar falha de login de admin: {e}")
+            return False
+    
+    def log_admin_access_attempt(self, ip: str, user_agent: str, path: str, method: str) -> bool:
+        """
+        Registra tentativa de acesso ao painel de administração
+        """
+        if not self.client: 
+            print("ERRO: log_admin_access_attempt, self.client é None."); 
+            return False
+        
+        try:
+            log_data = {
+                "ip_address": ip,
+                "user_agent": user_agent,
+                "path": path,
+                "method": method,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            response = self.client.table("admin_access_logs").insert(log_data).execute()
+            return bool(response.data and len(response.data) > 0)
+        except Exception as e:
+            print(f"Erro ao registrar tentativa de acesso admin: {e}")
+            return False
+    
+    # Método para logging de autenticação
+    def log_auth_attempt(self, ip: str, username: str, successful: bool, 
+                       reason: Optional[str] = None, user_id: Optional[str] = None) -> bool:
+        """
+        Registra tentativa de autenticação
+        """
+        if not self.client: 
+            print("ERRO: log_auth_attempt, self.client é None."); 
+            return False
+        
+        try:
+            log_data = {
+                "ip_address": ip,
+                "username": username,
+                "successful": successful,
+                "reason": reason,
+                "user_id": user_id,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            response = self.client.table("auth_attempt_logs").insert(log_data).execute()
+            return bool(response.data and len(response.data) > 0)
+        except Exception as e:
+            print(f"Erro ao registrar tentativa de autenticação: {e}")
+            return False
 
 supabase_service = SupabaseService()
