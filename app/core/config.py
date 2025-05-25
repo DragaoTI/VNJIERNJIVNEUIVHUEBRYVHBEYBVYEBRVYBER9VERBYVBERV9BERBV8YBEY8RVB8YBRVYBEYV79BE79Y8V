@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     # Rate Limiting
     RATE_LIMIT_DEFAULT: str = "60/minute"
     RATE_LIMIT_LOGIN: str = "5/minute"
+    RATE_LIMIT_LOGIN_ATTEMPTS: str = "5/minute"
     RATE_LIMIT_SIGNUP: str = "3/minute"
     RATE_LIMIT_ADMIN: str = "120/minute"
     RATE_LIMIT_2FA: str = "10/minute"
