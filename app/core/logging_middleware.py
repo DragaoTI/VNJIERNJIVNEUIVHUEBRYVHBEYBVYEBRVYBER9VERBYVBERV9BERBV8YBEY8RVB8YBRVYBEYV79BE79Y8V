@@ -29,44 +29,61 @@ USER_JWT_ALGORITHM = settings.JWT_ALGORITHM
 logger = logging.getLogger("api")
 logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper()))
 
-# Cria diretório de logs se não existir
-log_dir = "logs"
-if not os.path.exists(log_dir):
-    os.makedirs(log_dir)
+# Adiciona handler de console sempre
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logger.addHandler(console_handler)
 
-# Handler para arquivo
-file_handler = RotatingFileHandler(
-    os.path.join(log_dir, settings.LOG_FILE),
-    maxBytes=settings.LOG_MAX_SIZE,
-    backupCount=settings.LOG_BACKUP_COUNT
-)
-
-# Formato do log
-if settings.LOG_FORMAT == "json":
-    class JsonFormatter(logging.Formatter):
-        def format(self, record):
-            log_data = {
-                "timestamp": datetime.utcnow().isoformat(),
-                "level": record.levelname,
-                "message": record.getMessage(),
-                "request_id": getattr(record, "request_id", None),
-                "client_ip": getattr(record, "client_ip", None),
-                "method": getattr(record, "method", None),
-                "path": getattr(record, "path", None),
-                "status_code": getattr(record, "status_code", None),
-                "response_time": getattr(record, "response_time", None),
-                "user_agent": getattr(record, "user_agent", None),
-                "error": getattr(record, "error", None)
-            }
-            return json.dumps(log_data)
+# Configura log em arquivo apenas se estiver em ambiente que permite escrita em disco
+log_to_file = getattr(settings, 'LOG_TO_FILE', False)
+if log_to_file:
+    # Cria diretório de logs se não existir
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        try:
+            os.makedirs(log_dir)
+        except Exception as e:
+            print(f"AVISO: Não foi possível criar diretório de logs: {str(e)}")
+            log_to_file = False
     
-    file_handler.setFormatter(JsonFormatter())
-else:
-    file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
-
-logger.addHandler(file_handler)
+    if log_to_file:
+        try:
+            # Handler para arquivo
+            file_handler = RotatingFileHandler(
+                os.path.join(log_dir, settings.LOG_FILE),
+                maxBytes=settings.LOG_MAX_SIZE,
+                backupCount=settings.LOG_BACKUP_COUNT
+            )
+            
+            # Formato do log
+            if settings.LOG_FORMAT == "json":
+                class JsonFormatter(logging.Formatter):
+                    def format(self, record):
+                        log_data = {
+                            "timestamp": datetime.utcnow().isoformat(),
+                            "level": record.levelname,
+                            "message": record.getMessage(),
+                            "request_id": getattr(record, "request_id", None),
+                            "client_ip": getattr(record, "client_ip", None),
+                            "method": getattr(record, "method", None),
+                            "path": getattr(record, "path", None),
+                            "status_code": getattr(record, "status_code", None),
+                            "response_time": getattr(record, "response_time", None),
+                            "user_agent": getattr(record, "user_agent", None),
+                            "error": getattr(record, "error", None)
+                        }
+                        return json.dumps(log_data)
+                
+                file_handler.setFormatter(JsonFormatter())
+            else:
+                file_handler.setFormatter(logging.Formatter(
+                    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+                ))
+            
+            logger.addHandler(file_handler)
+        except Exception as e:
+            print(f"AVISO: Erro ao configurar log em arquivo: {str(e)}")
+            log_to_file = False
 
 async def get_request_body_for_log(request: Request) -> Optional[Dict[str, Any]]:
     # Omitindo a leitura real do corpo para evitar consumir o stream e por segurança/simplicidade
