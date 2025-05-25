@@ -13,8 +13,7 @@ SECURITY_ROUTE_PREFIX = secrets.token_urlsafe(8)
 
 router = APIRouter(
     prefix=f"/{SECURITY_ROUTE_PREFIX}_security",
-    tags=["Security Monitoring"],
-    dependencies=[Depends(limiter.check_rate_limit_dependency("security_admin"))]
+    tags=["Security Monitoring"]
 )
 
 @router.get("/alerts", summary="Lista alertas de segurança recentes")
@@ -269,4 +268,4 @@ async def block_ip(
     return {
         "success": True,
         "message": f"IP {ip} bloqueado com sucesso"
-    } 
+    }
