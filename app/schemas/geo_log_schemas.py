@@ -21,4 +21,4 @@ class GeoLogResponse(GeoLogBase):
     timestamp: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
