@@ -14,6 +14,8 @@ from datetime import timedelta, datetime, timezone
 from typing import Optional, Dict
 import uuid
 import secrets
+import json
+import traceback
 from app.schemas.auth_schemas import (
     TokenRefresh, PasswordReset, 
     PasswordResetRequest, ChangePasswordRequest
@@ -33,40 +35,64 @@ pending_2fa_challenges = {}
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/hour") # Limite para registro
 async def register_user(request: Request, user_in: UserCreate):
-    # Adicionando log para debug
-    print(f"Recebida solicitação de registro para: {user_in.email}")
-    print(f"Dados do usuário: {user_in.model_dump(exclude={'password'})}")
+    # Logs detalhados para debug
+    print("="*50)
+    print(f"[REGISTRO] Nova solicitação recebida - {datetime.now().isoformat()}")
+    print(f"[REGISTRO] Email: {user_in.email}")
+    print(f"[REGISTRO] Username: {user_in.username}")
+    print(f"[REGISTRO] Metadados: {json.dumps(user_in.user_metadata) if user_in.user_metadata else 'None'}")
+    print(f"[REGISTRO] IP do cliente: {request.client.host if request.client else 'unknown'}")
+    print(f"[REGISTRO] User-Agent: {request.headers.get('user-agent', 'unknown')}")
     
     # Verificar se email já existe
+    print(f"[REGISTRO] Verificando se email já existe: {user_in.email}")
     email_exists = await supabase_service.get_user_by_email_for_check(user_in.email)
     if email_exists:
+        print(f"[REGISTRO] Email já registrado: {user_in.email}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
         )
+    print(f"[REGISTRO] Email disponível: {user_in.email}")
     
     try:
         # Tentativa de criação de usuário com mais detalhes de log
-        print(f"Iniciando criação de usuário no Supabase")
+        print(f"[REGISTRO] Iniciando criação de usuário no Supabase")
+        print(f"[REGISTRO] Dados completos sendo enviados: {user_in.model_dump(exclude={'password'})}")
+        
         new_user = await supabase_service.create_user(user_in)
         
         if not new_user:
-            print(f"ERRO: create_user retornou None para {user_in.email}")
+            print(f"[REGISTRO] ERRO: create_user retornou None para {user_in.email}")
+            print(f"[REGISTRO] Verifique logs do Supabase para mais detalhes")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Could not create user in Supabase",
             )
             
-        print(f"Usuário criado com sucesso: {new_user.id}")
+        print(f"[REGISTRO] Usuário criado com sucesso: {new_user.id}")
+        print("="*50)
         return new_user
         
     except Exception as e:
-        import traceback
-        print(f"Exceção durante registro de usuário: {str(e)}")
+        print(f"[REGISTRO] EXCEÇÃO durante registro: {str(e)}")
+        print("[REGISTRO] Stack trace completa:")
         traceback.print_exc()
+        print(f"[REGISTRO] Tipo de exceção: {type(e).__name__}")
+        
+        # Tenta extrair mais informações do erro
+        error_details = str(e)
+        if hasattr(e, 'detail'):
+            error_details = e.detail
+        elif hasattr(e, 'args') and len(e.args) > 0:
+            error_details = str(e.args[0])
+            
+        print(f"[REGISTRO] Detalhes do erro: {error_details}")
+        print("="*50)
+        
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creating user: {str(e)}",
+            detail=f"Error creating user: {error_details}",
         )
 
 
