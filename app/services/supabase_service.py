@@ -61,11 +61,53 @@ class SupabaseService:
             user_metadata_with_role = user_create.model_dump(exclude_unset=True).get("user_metadata", {})
             if "role" not in user_metadata_with_role: user_metadata_with_role["role"] = "user"
             
+            # Adicionando username nos metadados para garantir que seja passado ao trigger
+            if not user_metadata_with_role.get("username") and hasattr(user_create, "username"):
+                user_metadata_with_role["username"] = user_create.username
+            
+            # Alterando email_confirm para False para seguir o fluxo normal
             response = self.client.auth.admin.create_user(
-                email=user_create.email, password=user_create.password,
-                email_confirm=True, user_metadata=user_metadata_with_role
+                email=user_create.email, 
+                password=user_create.password,
+                email_confirm=False,  # Mudando para FALSE
+                user_metadata=user_metadata_with_role
             )
+            
             if response and response.user:
+                # Após criar o usuário, garantir que o perfil seja criado manualmente
+                try:
+                    # Tenta criar o perfil explicitamente usando RPC
+                    profile_data = {
+                        "user_id": response.user.id,
+                        "username": user_metadata_with_role.get("username") or response.user.email.split("@")[0],
+                        "email": response.user.email
+                    }
+                    
+                    # Chamar a função RPC que criamos para criar o perfil
+                    profile_response = self.client.rpc(
+                        "create_profile_for_user",
+                        {
+                            "user_id": profile_data["user_id"],
+                            "user_email": profile_data["email"],
+                            "username": profile_data["username"]
+                        }
+                    ).execute()
+                    
+                    print(f"Perfil criado manualmente: {profile_response}")
+                except Exception as profile_error:
+                    print(f"AVISO: Falha ao criar perfil manualmente, mas o usuário foi criado: {profile_error}")
+                    # Vamos tentar inserir diretamente na tabela como fallback
+                    try:
+                        self.client.table("profiles").insert({
+                            "user_id": response.user.id,
+                            "username": user_metadata_with_role.get("username") or response.user.email.split("@")[0],
+                            "email": response.user.email,
+                            "created_at": datetime.now(timezone.utc).isoformat()
+                        }).execute()
+                        print("Perfil criado com método alternativo")
+                    except Exception as insert_error:
+                        print(f"ERRO secundário ao inserir perfil diretamente: {insert_error}")
+                
                 # ... (lógica de conversão para User model)
                 created_user = response.user
                 return User(
@@ -74,7 +116,10 @@ class SupabaseService:
                     user_metadata=created_user.user_metadata or {}
                 )
             print(f"Falha ao criar usuário Supabase. Resposta: {response}"); return None
-        except Exception as e: print(f"Erro ao criar usuário Supabase: {e}"); return None
+        except Exception as e: 
+            print(f"Erro ao criar usuário Supabase: {e}")
+            traceback.print_exc()  # Adicionando stack trace detalhada
+            return None
 
     async def login_user(self, email: str, password: str) -> Optional[User]:
         if not self.client: print("ERRO: login_user, self.client é None."); return None
