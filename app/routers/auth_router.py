@@ -33,6 +33,11 @@ pending_2fa_challenges = {}
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/hour") # Limite para registro
 async def register_user(request: Request, user_in: UserCreate):
+    # Adicionando log para debug
+    print(f"Recebida solicitação de registro para: {user_in.email}")
+    print(f"Dados do usuário: {user_in.model_dump(exclude={'password'})}")
+    
+    # Verificar se email já existe
     email_exists = await supabase_service.get_user_by_email_for_check(user_in.email)
     if email_exists:
         raise HTTPException(
@@ -40,15 +45,29 @@ async def register_user(request: Request, user_in: UserCreate):
             detail="Email already registered",
         )
     
-    new_user = await supabase_service.create_user(user_in)
-    if not new_user:
+    try:
+        # Tentativa de criação de usuário com mais detalhes de log
+        print(f"Iniciando criação de usuário no Supabase")
+        new_user = await supabase_service.create_user(user_in)
+        
+        if not new_user:
+            print(f"ERRO: create_user retornou None para {user_in.email}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not create user in Supabase",
+            )
+            
+        print(f"Usuário criado com sucesso: {new_user.id}")
+        return new_user
+        
+    except Exception as e:
+        import traceback
+        print(f"Exceção durante registro de usuário: {str(e)}")
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Could not create user in Supabase",
+            detail=f"Error creating user: {str(e)}",
         )
-    # Opcional: você pode querer logar o usuário e retornar tokens aqui
-    # ou apenas retornar os dados do usuário e exigir um login separado.
-    return new_user
 
 
 @router.post("/login/json", response_model=Token)
