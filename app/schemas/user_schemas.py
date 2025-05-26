@@ -10,8 +10,8 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    # Opcional: Adicionar metadata no momento da criação
-    # user_metadata: Optional[dict] = {"role": "user"} # Default role
+    username: str  # Adicionando campo explícito para username
+    user_metadata: Optional[dict] = None  # Para armazenar metadados customizados
 
 class UserResponse(UserBase):
     id: uuid.UUID # Supabase user ID é UUID
