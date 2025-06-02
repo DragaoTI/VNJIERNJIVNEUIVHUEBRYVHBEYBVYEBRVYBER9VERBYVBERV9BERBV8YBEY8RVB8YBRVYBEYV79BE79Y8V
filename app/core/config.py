@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     
     # URLs e rotas especiais
     ADMIN_PANEL_URL: str = "/_Y3Jvc3NoYWlybGFiX2FkbWlu-admin_"
-    FRONTEND_URL: str = "https://crosshairlab.netlify.app"
+    FRONTEND_URL: str = "https://crosshairlab.app"
     
     # Configuração de CORS
     CORS_ORIGINS: str = "*"
@@ -157,14 +157,15 @@ settings = Settings()
 # Configurações para diferentes ambientes
 if settings.ENVIRONMENT == "production":
     settings.DEBUG = False
-    settings.CORS_ORIGINS = "https://crosshairlab.com,https://admin.crosshairlab.com"
+    settings.CORS_ORIGINS = "https://crosshairlab.app,https://api.crosshairlab.app"
+    settings.FRONTEND_URL = "https://crosshairlab.app"
     settings.ENABLE_SECURITY_HEADERS = True
     settings.SECURITY_SCANNER_ENABLED = True
     settings.API_LOGGING_ENABLED = True
     settings.ENABLE_PERFORMANCE_MONITORING = True
 elif settings.ENVIRONMENT == "staging":
     settings.DEBUG = False
-    settings.CORS_ORIGINS = "https://staging.crosshairlab.com,https://admin-staging.crosshairlab.com,http://localhost:3000"
+    settings.CORS_ORIGINS = "https://staging.crosshairlab.app,https://admin-staging.crosshairlab.app,http://localhost:3000"
     settings.ENABLE_SECURITY_HEADERS = True
     settings.SECURITY_SCANNER_ENABLED = True
     settings.API_LOGGING_ENABLED = True
