@@ -15,6 +15,13 @@ import uuid
 from ..schemas.user import TokenData
 from ..database import get_db
 from sqlalchemy.orm import Session
+from .auth_supabase import (
+    get_current_user,
+    create_access_token,
+    decode_token,
+    authenticate_user,
+    verify_password
+)
 
 # Configuração do OAuth2
 oauth2_scheme = OAuth2PasswordBearer(
@@ -315,4 +322,13 @@ def verify_2fa_code_token(secret: str, code: str) -> bool:
         bool: True se o código for válido, False caso contrário
     """
     totp = pyotp.totp.TOTP(secret)
-    return totp.verify(code) 
+    return totp.verify(code)
+
+# Exportar funções de autenticação
+__all__ = [
+    "get_current_user",
+    "create_access_token",
+    "decode_token",
+    "authenticate_user",
+    "verify_password"
+] 
