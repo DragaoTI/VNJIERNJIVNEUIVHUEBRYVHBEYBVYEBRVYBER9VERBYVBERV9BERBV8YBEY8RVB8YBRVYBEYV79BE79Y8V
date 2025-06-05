@@ -201,4 +201,4 @@ async def authenticate_user(email: str, password: str) -> Optional[Dict[str, Any
         return None
     except Exception as e:
         print(f"Erro na autenticação: {e}")
-        return None 
+        return None
