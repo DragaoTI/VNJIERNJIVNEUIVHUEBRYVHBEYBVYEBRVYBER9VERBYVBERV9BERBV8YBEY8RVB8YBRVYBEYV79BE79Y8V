@@ -5,7 +5,18 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import os
 
-from ..supabase_client import get_supabase
+# Tentar importar usando caminho absoluto
+try:
+    from api.supabase_client import get_supabase
+except ImportError:
+    # Fallback para importação relativa
+    try:
+        from ..supabase_client import get_supabase
+    except ImportError:
+        print("ERRO: Não foi possível importar supabase_client")
+        # Definição de stub para evitar erros de importação
+        def get_supabase():
+            raise NotImplementedError("Supabase client não disponível")
 
 # Configuração de segurança
 security = HTTPBearer()
