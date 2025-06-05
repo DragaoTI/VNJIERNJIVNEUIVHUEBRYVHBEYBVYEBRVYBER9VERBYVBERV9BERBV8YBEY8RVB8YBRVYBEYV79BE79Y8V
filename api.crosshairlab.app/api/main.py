@@ -15,8 +15,8 @@ API_VERSION = "1.0.0"
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
 
 # Importações dos routers
-# from routers import users, crosshairs, auth
-from routers.admin.router import router as admin_router
+# from .routers import users, crosshairs, auth
+from .routers.admin.router import router as admin_router
 
 # Cria a aplicação FastAPI
 app = FastAPI(
@@ -82,4 +82,4 @@ if __name__ == "__main__":
         host=host,
         port=port,
         reload=ENVIRONMENT == "development"
-    ) 
+    )
