@@ -12,8 +12,6 @@ from io import BytesIO
 import uuid
 
 from ..schemas.user import TokenData
-from ..database import get_db
-from sqlalchemy.orm import Session
 
 # Importar funções do auth_supabase
 from .auth_supabase import (
