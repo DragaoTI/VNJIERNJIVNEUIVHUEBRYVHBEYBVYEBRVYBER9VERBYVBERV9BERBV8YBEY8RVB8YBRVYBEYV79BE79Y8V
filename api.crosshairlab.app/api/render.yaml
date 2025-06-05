@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: crosshairlab-api
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "cd api && uvicorn main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: crosshairlab-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: 7
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: RATE_LIMIT_LOGIN_ATTEMPTS
+        value: "5/minute"
+      - key: RATE_LIMIT_API_CALLS
+        value: "100/minute"
+      - key: RATE_LIMIT_IP_BLOCK_DURATION
+        value: 3600
+      - key: CACHE_ENABLED
+        value: true
+      - key: CACHE_TTL
+        value: 300
+
+databases:
+  - name: crosshairlab-db
+    databaseName: crosshairlab
+    user: crosshairlab_user
+    plan: starter 
