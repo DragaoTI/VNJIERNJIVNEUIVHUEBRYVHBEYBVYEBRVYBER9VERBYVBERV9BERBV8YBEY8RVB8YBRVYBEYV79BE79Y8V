@@ -30,6 +30,11 @@ secure==0.3.0
 
 # Serviços de armazenamento e banco de dados
 supabase==1.0.3
+supabase-py==0.0.2  # Versão adicional para compatibilidade
+postgrest-py==0.10.6  # Dependência do Supabase
+gotrue==0.6.0  # Cliente de autenticação do Supabase
+realtime-py==0.1.3  # Cliente de tempo real do Supabase
+storage3==0.5.4  # Cliente de armazenamento do Supabase
 boto3==1.26.131
 redis==4.5.5
 
@@ -45,3 +50,11 @@ slowapi==0.1.7
 starlette-exporter==0.15.1
 starlette-context==0.3.6
 starlette<0.27.0,>=0.26.1
+
+# Ferramentas de desenvolvimento
+pytest==7.3.1
+pytest-asyncio==0.21.0
+black==23.3.0
+isort==5.12.0
+mypy==1.3.0
+flake8==6.0.0
