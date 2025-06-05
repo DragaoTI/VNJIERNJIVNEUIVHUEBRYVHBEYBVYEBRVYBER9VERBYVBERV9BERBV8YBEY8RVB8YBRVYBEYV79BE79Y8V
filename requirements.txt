@@ -11,11 +11,11 @@ email-validator==2.1.0
 httpx==0.25.2
 asyncpg==0.29.0
 
-# Segurança
+# Segurança - versões testadas e disponíveis
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.1.2
-cryptography==41.0.8
+cryptography==41.0.7
 pyotp==2.9.0
 qrcode==7.4.2
 Pillow==10.1.0
@@ -56,6 +56,6 @@ isort==5.12.0
 mypy==1.7.1
 flake8==6.1.0
 
-# Dependências adicionais que podem ser necessárias
+# Dependências adicionais
 typing-extensions==4.8.0
 annotated-types==0.6.0
