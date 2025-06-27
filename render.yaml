@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: crosshairlab-api
+    name: crosshairlab-admin-api
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
@@ -16,4 +16,14 @@ services:
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY
-        sync: false 
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+        sync: false
+      - key: RECAPTCHA_SECRET_KEY
+        sync: false
+      - key: ADMIN_WHITELIST_IPS
+        sync: false
+      - key: REDIS_URL
+        sync: false
+    healthCheckPath: /health 
